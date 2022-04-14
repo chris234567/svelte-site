@@ -6,18 +6,23 @@ import type { Chapter, SignupStore } from '../types'
 async function airtablePost(
   baseId: string,
   table: string,
-  data: { [key: string]: unknown },
-  apiKey: string
+  data: { [key: string]: unknown }
 ) {
   const response = await fetch(
-    `https://api.airtable.com/v0/${baseId}/${table}`,
+    `https://api.github.com/repos/chris234567/actions-server/dispatches`,
     {
       method: `POST`,
       headers: {
         'Content-Type': `application/json`,
-        authorization: `Bearer ${apiKey}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Authorization': `Bearer ${import.meta.env.VITE_GITHUB_ACCESS_TOKEN}`,
       },
-      body: JSON.stringify({ records: [{ fields: data }], typecast: true }),
+      body: JSON.stringify({
+        'event_type': 'create-airtable-entry',
+        'client_payload': { 
+          'url': `https://api.airtable.com/v0/${baseId}/${table}`,
+          'records': { records: [{ fields: data }], typecast: true } }
+      }),
     }
   )
   return await response.json()
@@ -30,8 +35,6 @@ export async function sendToAirtable(
   chapterBaseId: string,
   test = false
 ): Promise<Response[]> {
-  const apiKey = import.meta.env.VITE_AIRTABLE_API_KEY
-  if (!apiKey) throw `missing Airtable API key, got ${apiKey}`
   const table = data.type.value === `student` ? `Studenten` : `Schüler`
 
   // common fields for both students and pupils
@@ -103,12 +106,12 @@ export async function sendToAirtable(
 
   if (test) {
     console.log(`chapterFields:`, chapterFields) // eslint-disable-line no-console
-    return await airtablePost(testBaseId, table, chapterFields, apiKey)
+    return await airtablePost(testBaseId, table, chapterFields)
   }
   // use Promise.all() to fail fast if one record creation fails
   return await Promise.all([
-    airtablePost(globalBaseId, table, globalFields, apiKey),
-    airtablePost(chapterBaseId, table, chapterFields, apiKey),
+    airtablePost(globalBaseId, table, globalFields),
+    airtablePost(chapterBaseId, table, chapterFields),
   ])
 }
 
